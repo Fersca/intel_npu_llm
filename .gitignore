@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+
+# Local model cache and runtime artifacts
+ov_models/
+
+# Local test/temp artifacts
+.tmp_tests/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
