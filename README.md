@@ -6,7 +6,7 @@ Python CLI to download, load, and run OpenVINO-optimized LLMs on Intel NPU, with
 - Interactive menu to pick a model.
 - Automatic model download from Hugging Face.
 - Model loading on `NPU` via `openvino_genai`.
-- Management commands (`models`, `delete`, `stats`, `benchmark`, `current_model`, `start_server`, `help`).
+- Management commands (`models`, `delete`, `stats`, `benchmark`, `config`, `current_model`, `start_server`, `help`).
 - Persisted metrics in `ov_models/stats.json`.
 
 ## Requirements
@@ -38,7 +38,8 @@ python .\chat_npu_13.py
 - `stats`: show aggregated TTFT/TPS metrics
 - `benchmark`: ask for 5 prompts and run them on all downloaded models (prompts are saved and can be reused in future runs)
 - `benchmark <number>`: run benchmark on one model from the list
-- `current_model`: show active loaded model
+- `config`: set runtime `DEVICE` and `PERFORMANCE_HINT` values used when loading pipelines
+- `current_model`: show active loaded model and active runtime config
 - `start_server`: start an OpenAI-compatible server on port `1311` (`POST /v1/chat/completions`)
 - `exit`: quit
 

@@ -14,7 +14,29 @@ from huggingface_hub import snapshot_download
 # =========================
 # Config
 # =========================
-DEVICE = "NPU"
+DEFAULT_DEVICE = "NPU"
+DEFAULT_PERFORMANCE_HINT = "LATENCY"
+
+DEVICE_OPTIONS = [
+    "CPU",
+    "GPU",
+    "NPU",
+    "AUTO",
+    "AUTO:NPU,GPU,CPU",
+    "MULTI:NPU,GPU",
+    "HETERO:NPU,GPU,CPU",
+]
+
+PERFORMANCE_HINT_OPTIONS = [
+    "LATENCY",
+    "THROUGHPUT",
+    "CUMULATIVE_THROUGHPUT",
+    "UNDEFINED",
+]
+
+ACTIVE_DEVICE = DEFAULT_DEVICE
+ACTIVE_PERFORMANCE_HINT = DEFAULT_PERFORMANCE_HINT
+
 CACHE_DIR = Path("ov_models")
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -313,11 +335,44 @@ def print_stats_table(stats: dict) -> None:
 # =========================
 def load_pipeline(selected_model: dict) -> ov_genai.LLMPipeline:
     model_path = selected_model["local"]
-    print(f"\n✅ Model loaded on {DEVICE}: {model_menu_label(selected_model)}")
+    print(
+        f"\n✅ Model loaded on {ACTIVE_DEVICE}: {model_menu_label(selected_model)} "
+        f"(PERFORMANCE_HINT={ACTIVE_PERFORMANCE_HINT})"
+    )
     return ov_genai.LLMPipeline(
         str(model_path),
-        DEVICE,
-        PERFORMANCE_HINT="LATENCY",
+        ACTIVE_DEVICE,
+        PERFORMANCE_HINT=ACTIVE_PERFORMANCE_HINT,
+    )
+
+
+def choose_from_options(title: str, options: list[str], current_value: str) -> str:
+    print(f"\n{title}")
+    for i, option in enumerate(options, 1):
+        marker = "(current)" if option == current_value else ""
+        print(f"  {i}) {option} {marker}".rstrip())
+
+    while True:
+        choice = input("Option: ").strip()
+        if choice.isdigit() and 1 <= int(choice) <= len(options):
+            return options[int(choice) - 1]
+        print("Invalid option.")
+
+
+def configure_runtime() -> None:
+    global ACTIVE_DEVICE, ACTIVE_PERFORMANCE_HINT
+
+    print("\n⚙️ Runtime configuration")
+    ACTIVE_DEVICE = choose_from_options("Select DEVICE:", DEVICE_OPTIONS, ACTIVE_DEVICE)
+    ACTIVE_PERFORMANCE_HINT = choose_from_options(
+        "Select PERFORMANCE_HINT:",
+        PERFORMANCE_HINT_OPTIONS,
+        ACTIVE_PERFORMANCE_HINT,
+    )
+
+    print(
+        f"\n✅ Runtime updated: DEVICE={ACTIVE_DEVICE}, "
+        f"PERFORMANCE_HINT={ACTIVE_PERFORMANCE_HINT}\n"
     )
 
 
@@ -334,7 +389,9 @@ Commands:
   /delete              Alias of delete
   stats                Show cumulative metrics (TTFT/TPS) by model
   /stats               Alias of stats
-  current_model        Show the currently loaded model
+  config               Configure DEVICE and PERFORMANCE_HINT
+  /config              Alias of config
+  current_model        Show the currently loaded model and runtime config
   /current_model       Alias of current_model
   benchmark            Run 5 prompts on all downloaded models
   benchmark <number>   Run benchmark only for model number <number>
@@ -357,7 +414,7 @@ def is_command(s: str) -> bool:
     if s.startswith("/"):
         s = s[1:]
     cmd = s.split(maxsplit=1)[0]
-    return cmd in {"help", "models", "delete", "stats", "exit", "current_model", "benchmark", "start_server"}
+    return cmd in {"help", "models", "delete", "stats", "config", "exit", "current_model", "benchmark", "start_server"}
 
 
 def normalize_command(s: str) -> str:
@@ -633,11 +690,21 @@ def main() -> None:
                 print_stats_table(stats)
                 continue
 
+            if cmd == "config":
+                configure_runtime()
+                continue
+
             if cmd == "current_model":
                 if current is None:
-                    print("\n(no model loaded)\n")
+                    print(
+                        f"\n(no model loaded) | DEVICE={ACTIVE_DEVICE} | "
+                        f"PERFORMANCE_HINT={ACTIVE_PERFORMANCE_HINT}\n"
+                    )
                 else:
-                    print(f"\nLoaded model: {model_menu_label(current)}\n")
+                    print(
+                        f"\nLoaded model: {model_menu_label(current)} | "
+                        f"DEVICE={ACTIVE_DEVICE} | PERFORMANCE_HINT={ACTIVE_PERFORMANCE_HINT}\n"
+                    )
                 continue
 
             if cmd.startswith("benchmark"):
