@@ -190,6 +190,23 @@ class TestChatNPU(unittest.TestCase):
         self.assertTrue(app.is_command("current_model"))
         self.assertTrue(app.is_command("benchmark 1"))
         self.assertTrue(app.is_command("start_server"))
+        self.assertTrue(app.is_command("/config"))
+
+
+    def test_configure_runtime_updates_active_values(self):
+        old_device = app.ACTIVE_DEVICE
+        old_hint = app.ACTIVE_PERFORMANCE_HINT
+        try:
+            with (
+                mock.patch("builtins.input", side_effect=["1", "2"]),
+                redirect_stdout(io.StringIO()),
+            ):
+                app.configure_runtime()
+            self.assertEqual(app.ACTIVE_DEVICE, app.DEVICE_OPTIONS[0])
+            self.assertEqual(app.ACTIVE_PERFORMANCE_HINT, app.PERFORMANCE_HINT_OPTIONS[1])
+        finally:
+            app.ACTIVE_DEVICE = old_device
+            app.ACTIVE_PERFORMANCE_HINT = old_hint
 
     def test_load_pipeline_calls_openvino_constructor(self):
         selected = {"display": "X", "params": "1B", "local": self.cache / "x", "repo": "r/x"}
@@ -199,7 +216,11 @@ class TestChatNPU(unittest.TestCase):
         ):
             result = app.load_pipeline(selected)
         self.assertEqual(result, "PIPE")
-        mocked_pipe.assert_called_once_with(str(self.cache / "x"), app.DEVICE, PERFORMANCE_HINT="LATENCY")
+        mocked_pipe.assert_called_once_with(
+            str(self.cache / "x"),
+            app.ACTIVE_DEVICE,
+            PERFORMANCE_HINT=app.ACTIVE_PERFORMANCE_HINT,
+        )
 
     def test_main_full_flow(self):
         model_dir = self.cache / "ready_model"
