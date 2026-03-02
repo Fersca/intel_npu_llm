@@ -36,18 +36,22 @@ class TestChatNPU(unittest.TestCase):
         self.cache.mkdir(parents=True, exist_ok=True)
         self.auth = self.cache / "hf_auth.json"
         self.stats = self.cache / "stats.json"
+        self.prompts_file = self.cache / "benchmark_prompts.json"
         self.orig_cache = app.CACHE_DIR
         self.orig_auth = app.AUTH_FILE
         self.orig_stats = app.STATS_FILE
+        self.orig_prompts = app.BENCHMARK_PROMPTS_FILE
         app.CACHE_DIR = self.cache
         app.AUTH_FILE = self.auth
         app.STATS_FILE = self.stats
+        app.BENCHMARK_PROMPTS_FILE = self.prompts_file
         os.environ.pop("HF_TOKEN", None)
 
     def tearDown(self):
         app.CACHE_DIR = self.orig_cache
         app.AUTH_FILE = self.orig_auth
         app.STATS_FILE = self.orig_stats
+        app.BENCHMARK_PROMPTS_FILE = self.orig_prompts
         os.environ.pop("HF_TOKEN", None)
         shutil.rmtree(self.base, ignore_errors=True)
 
@@ -183,6 +187,9 @@ class TestChatNPU(unittest.TestCase):
         self.assertTrue(app.is_command("models"))
         self.assertFalse(app.is_command("hello"))
         self.assertEqual(app.normalize_command("/stats"), "stats")
+        self.assertTrue(app.is_command("current_model"))
+        self.assertTrue(app.is_command("benchmark 1"))
+        self.assertTrue(app.is_command("start_server"))
 
     def test_load_pipeline_calls_openvino_constructor(self):
         selected = {"display": "X", "params": "1B", "local": self.cache / "x", "repo": "r/x"}
@@ -204,7 +211,7 @@ class TestChatNPU(unittest.TestCase):
                 streamer("hola")
                 streamer(" mundo")
 
-        inputs = iter(["hola", "help", "stats", "curre:model", "models", "pregunta", "delete", "exit"])
+        inputs = iter(["hola", "help", "stats", "current_model", "models", "pregunta", "delete", "exit"])
 
         def fake_input(_prompt):
             return next(inputs)
@@ -223,12 +230,119 @@ class TestChatNPU(unittest.TestCase):
             app.main()
 
         text = out.getvalue()
-        self.assertIn("No hay modelo cargado", text)
-        self.assertIn("Comandos:", text)
+        self.assertIn("No model loaded", text)
+        self.assertIn("Commands:", text)
         self.assertIn("TTFT:", text)
-        self.assertIn("Borraste el modelo activo", text)
+        self.assertIn("You deleted the active model", text)
         self.assertIn("Bye.", text)
         self.assertTrue(mocked_save.called)
+
+    def test_benchmark_models_all_downloaded(self):
+        m1 = {"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}
+        m2 = {"display": "B", "params": "2B", "local": self.cache / "b", "repo": "r/b"}
+
+        class FakePipe:
+            def generate(self, prompt, max_new_tokens, temperature, top_p, streamer):
+                streamer("ok")
+
+        out = io.StringIO()
+        with (
+            mock.patch.object(app, "MODELS", [m1, m2]),
+            mock.patch.object(app, "is_downloaded", return_value=True),
+            mock.patch.object(app, "load_pipeline", return_value=FakePipe()) as mocked_load,
+            mock.patch.object(app, "save_stats") as mocked_save,
+            redirect_stdout(out),
+        ):
+            app.benchmark_models({"models": {}}, ["p1", "p2", "p3", "p4", "p5"])
+
+        self.assertEqual(mocked_load.call_count, 2)
+        self.assertTrue(mocked_save.called)
+
+    def test_benchmark_models_single_model_number(self):
+        m1 = {"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}
+        m2 = {"display": "B", "params": "2B", "local": self.cache / "b", "repo": "r/b"}
+
+        class FakePipe:
+            def generate(self, prompt, max_new_tokens, temperature, top_p, streamer):
+                streamer("ok")
+
+        with (
+            mock.patch.object(app, "MODELS", [m1, m2]),
+            mock.patch.object(app, "is_downloaded", return_value=True),
+            mock.patch.object(app, "load_pipeline", return_value=FakePipe()) as mocked_load,
+            mock.patch.object(app, "save_stats"),
+            redirect_stdout(io.StringIO()),
+        ):
+            app.benchmark_models({"models": {}}, ["p1", "p2", "p3", "p4", "p5"], model_number=2)
+
+        mocked_load.assert_called_once_with(m2)
+
+    def test_collect_benchmark_prompts(self):
+        with (
+            mock.patch("builtins.input", side_effect=["a", "b", "c", "d", "e"]),
+            redirect_stdout(io.StringIO()),
+        ):
+            prompts = app.collect_benchmark_prompts(5)
+        self.assertEqual(prompts, ["a", "b", "c", "d", "e"])
+
+    def test_save_and_load_benchmark_prompts(self):
+        app.save_benchmark_prompts(["one", "two", "three"])
+        self.assertTrue(self.prompts_file.exists())
+        loaded = app.load_saved_benchmark_prompts()
+        self.assertEqual(loaded, ["one", "two", "three"])
+
+    def test_collect_benchmark_prompts_reuses_saved(self):
+        app.save_benchmark_prompts(["p1", "p2", "p3", "p4", "p5"])
+        with (
+            mock.patch("builtins.input", side_effect=["y"]),
+            redirect_stdout(io.StringIO()),
+        ):
+            prompts = app.collect_benchmark_prompts(5)
+        self.assertEqual(prompts, ["p1", "p2", "p3", "p4", "p5"])
+
+    def test_prompt_yes_no_retries_invalid_input(self):
+        out = io.StringIO()
+        with (
+            mock.patch("builtins.input", side_effect=["maybe", "n"]),
+            redirect_stdout(out),
+        ):
+            result = app.prompt_yes_no("Use saved prompts?", default_yes=True)
+        self.assertFalse(result)
+        self.assertIn("Please answer with 'y' or 'n'.", out.getvalue())
+
+    def test_build_chat_prompt(self):
+        messages = [
+            {"role": "system", "content": "You are helpful"},
+            {"role": "user", "content": "Hello"},
+            {"role": "assistant", "content": "Hi"},
+            {"role": "user", "content": "How are you?"},
+        ]
+        prompt = app.build_chat_prompt(messages)
+        self.assertIn("System: You are helpful", prompt)
+        self.assertIn("User: Hello", prompt)
+        self.assertTrue(prompt.endswith("\nAssistant:"))
+
+    def test_create_openai_chat_response_shape(self):
+        response = app.create_openai_chat_response("repo/test", "sample response")
+        self.assertEqual(response["object"], "chat.completion")
+        self.assertEqual(response["model"], "repo/test")
+        self.assertEqual(response["choices"][0]["message"]["content"], "sample response")
+
+    def test_start_openai_compatible_server_starts_background_server(self):
+        state = {"pipe": None, "current": None}
+        fake_server = mock.MagicMock()
+        fake_thread = mock.MagicMock()
+
+        with (
+            mock.patch.object(app, "ThreadingHTTPServer", return_value=fake_server) as mocked_http,
+            mock.patch.object(app.threading, "Thread", return_value=fake_thread) as mocked_thread,
+        ):
+            result = app.start_openai_compatible_server(state)
+
+        self.assertIs(result, fake_server)
+        mocked_http.assert_called_once()
+        mocked_thread.assert_called_once()
+        fake_thread.start.assert_called_once()
 
 
 if __name__ == "__main__":
