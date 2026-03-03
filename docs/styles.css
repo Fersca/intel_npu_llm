@@ -112,6 +112,11 @@ main {
 h2 { margin: 0 0 14px; font-size: 1.5rem; }
 h3 { margin: 0 0 8px; font-size: 1.05rem; }
 
+.section-note {
+  margin: 0 0 12px;
+  color: var(--ink-soft);
+}
+
 .features {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -122,6 +127,39 @@ h3 { margin: 0 0 8px; font-size: 1.05rem; }
   border: 1px solid var(--line);
   padding: 12px;
   background: #fff;
+}
+
+.api-box {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 12px;
+}
+
+.api-box p {
+  margin: 8px 0;
+}
+
+.preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.preview-card {
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 10px;
+}
+
+.preview-mock {
+  border: 2px dashed #b9b4a6;
+  background: linear-gradient(135deg, #f7f1e2, #e8f4f8);
+  min-height: 92px;
+  display: grid;
+  place-items: center;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
 }
 
 .section-head {
@@ -254,6 +292,7 @@ code {
 
 @media (max-width: 900px) {
   .features { grid-template-columns: 1fr; }
+  .preview-grid { grid-template-columns: 1fr; }
   .panel { box-shadow: 4px 4px 0 var(--line); }
   .filters-top select { min-width: 180px; }
 }
