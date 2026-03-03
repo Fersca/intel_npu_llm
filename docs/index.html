@@ -46,24 +46,25 @@
       </div>
     </section>
 
-    <section class="panel" id="site-guide">
-      <h2>Site Features</h2>
+    <section class="panel" id="cli-commands">
+      <h2>CLI Commands</h2>
       <p class="section-note">
-        This page is designed as a live presentation dashboard for the project, using your latest exported benchmark snapshot.
+        Commands available from the terminal in the interactive CLI.
       </p>
       <div class="features">
-        <article>
-          <h3>Mode Tabs</h3>
-          <p>Switch between <code>Benchmark</code> and <code>Normal</code> stats tables with one click.</p>
-        </article>
-        <article>
-          <h3>Model + Device Focus</h3>
-          <p>Select a model and/or device to highlight rows or narrow down to a single configuration.</p>
-        </article>
-        <article>
-          <h3>Column Filters + Sort</h3>
-          <p>Filter each column independently and sort by the metric that matters for your comparison.</p>
-        </article>
+        <article><h3><code>/help</code></h3><p>Show command help.</p></article>
+        <article><h3><code>/models</code></h3><p>Select and load a model (downloads if missing).</p></article>
+        <article><h3><code>/add_model</code></h3><p>Add a new model interactively and save it to <code>ov_models/models.json</code>.</p></article>
+        <article><h3><code>/delete</code></h3><p>Delete model files from disk (model stays in the list).</p></article>
+        <article><h3><code>/stats</code></h3><p>Show metrics in separate tables for normal and benchmark modes.</p></article>
+        <article><h3><code>/clear_stats</code></h3><p>Clear all stored stats.</p></article>
+        <article><h3><code>/clear_stats &lt;n&gt;</code></h3><p>Clear all stats for model number <code>n</code>.</p></article>
+        <article><h3><code>/clear_stats &lt;n&gt; &lt;device&gt;</code></h3><p>Clear stats only for a model/device pair.</p></article>
+        <article><h3><code>/current_model</code></h3><p>Show current loaded model and runtime config.</p></article>
+        <article><h3><code>/benchmark</code></h3><p>Run benchmark for all models or only missing models (CPU/GPU/NPU).</p></article>
+        <article><h3><code>/benchmark &lt;n&gt;</code></h3><p>Run benchmark only for model number <code>n</code> across CPU/GPU/NPU.</p></article>
+        <article><h3><code>/start_server</code></h3><p>Start OpenAI-compatible backend server on port <code>1311</code>.</p></article>
+        <article><h3><code>/exit</code></h3><p>Exit the CLI.</p></article>
       </div>
     </section>
 
@@ -77,30 +78,6 @@
         <p><strong>Default local URL:</strong> <code>http://0.0.0.0:1311/v1/chat/completions</code></p>
         <p><strong>Command:</strong> <code>/start_server</code></p>
         <p><strong>Behavior:</strong> same request/response shape as OpenAI chat completions (model, messages, max_tokens, temperature, top_p).</p>
-      </div>
-    </section>
-
-    <section class="panel" id="screen-previews">
-      <h2>Screen Previews</h2>
-      <p class="section-note">
-        Visual preview cards of the main sections and interactions included in this site.
-      </p>
-      <div class="preview-grid">
-        <article class="preview-card">
-          <div class="preview-mock">Hero + Overview</div>
-          <h3>Landing Section</h3>
-          <p>Project pitch, quick links, and high-level capabilities.</p>
-        </article>
-        <article class="preview-card">
-          <div class="preview-mock">Tabs + Filters + Table</div>
-          <h3>Benchmark Explorer</h3>
-          <p>Interactive table with mode tabs, selectors, per-column filters, and sortable headers.</p>
-        </article>
-        <article class="preview-card">
-          <div class="preview-mock">API Info Panel</div>
-          <h3>Backend Integration</h3>
-          <p>OpenAI-compatible endpoint summary for plugging external clients and tools.</p>
-        </article>
       </div>
     </section>
 
