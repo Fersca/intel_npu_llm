@@ -1,65 +1,113 @@
-# intel_npu_llm
+﻿# intel_npu_llm
 
-Python CLI to download, load, and run OpenVINO-optimized LLMs on Intel NPU, with basic runtime metrics (`TTFT` and `TPS`).
+CLI local para descargar, cargar, probar y comparar LLMs optimizados para OpenVINO en CPU/GPU/NPU, con métricas persistentes y una web de presentación para GitHub Pages.
 
 ## Features
-- Interactive menu to pick a model.
-- Automatic model download from Hugging Face.
-- Model loading on `NPU` via `openvino_genai`.
-- Management commands (`models`, `delete`, `stats`, `benchmark`, `config`, `current_model`, `start_server`, `help`).
-- Persisted metrics in `ov_models/stats.json`.
+- Gestión interactiva de modelos (`/models`, `/delete`, `/add_model`).
+- Descarga automática desde Hugging Face (`snapshot_download`).
+- Carga con `openvino_genai` y configuración de runtime por cambio de modelo.
+- Compatibilidad por device persistida por modelo (`✅/❌/❔`) en menú de modelos.
+- Métricas TTFT/TPS por:
+  - modo normal de chat,
+  - modo benchmark,
+  - modelo,
+  - device.
+- Limpieza de métricas granular con `/clear_stats`.
+- Benchmark multi-device (`CPU/GPU/NPU`) y opción de correr solo modelos faltantes.
+- Servidor compatible con OpenAI (`POST /v1/chat/completions`).
 
-## Requirements
+## Estructura
+- `chat_npu_13.py`: CLI principal.
+- `ov_models/models.json`: catálogo editable de modelos.
+- `ov_models/stats.json`: historial de métricas.
+- `ov_models/device_compat.json`: compatibilidad por modelo/device.
+- `docs/`: sitio estático para GitHub Pages.
+
+## Requisitos
 - Windows + Python 3.10+
-- Compatible Intel NPU
-- Dependencies:
+- Intel NPU compatible (para pruebas NPU)
+- Dependencias:
   - `openvino-genai`
   - `huggingface_hub`
 
-## Quick install
+Instalación rápida:
+
 ```powershell
 python -m pip install openvino-genai huggingface_hub
 ```
 
-## Run the app
-```powershell
-.\run.ps1
-```
+## Ejecutar
 
-You can also run it directly:
 ```powershell
 python .\chat_npu_13.py
 ```
 
-## In-app commands
-- `help`: show help
-- `models`: choose/load model (downloads if missing)
-- `delete`: remove local model files
-- `stats`: show aggregated TTFT/TPS metrics
-- `benchmark`: ask for 5 prompts and run them on all downloaded models (prompts are saved and can be reused in future runs)
-- `benchmark <number>`: run benchmark on one model from the list
-- `config`: set runtime `DEVICE` and `PERFORMANCE_HINT` values used when loading pipelines
-- `current_model`: show active loaded model and active runtime config
-- `start_server`: start an OpenAI-compatible server on port `1311` (`POST /v1/chat/completions`)
-- `exit`: quit
+O:
 
-## Stats table
-The app stores benchmark/chat runs in `ov_models/stats.json` and shows them in a table ordered by average TPS. Benchmark prompts are stored in `ov_models/benchmark_prompts.json`.
-
-| Model | n | TTFT avg(s) | TPS avg | TTFT last(s) | TPS last |
-|---|---:|---:|---:|---:|---:|
-| Phi-4 mini instruct INT4 (≈3.8B, 8.40 GB) | 5 | 0.842 | 16.203 | 0.799 | 16.884 |
-| Qwen2.5 1.5B instruct INT4 (1.5B, 3.20 GB) | 5 | 0.611 | 21.107 | 0.592 | 21.443 |
-
-> Values above are an example format. Actual values come from your local runs.
-
-## Tests and coverage
 ```powershell
-.\test.ps1
+.\run.ps1
 ```
 
-This command runs tests and prints coverage in console (target: minimum `90%` on `chat_npu_13.py`).
+## Comandos CLI
+- `/help`: ayuda.
+- `/models`: seleccionar/cargar modelo (descarga si falta).
+- `/add_model`: alta interactiva de modelo y guardado en `ov_models/models.json`.
+- `/delete`: borrar archivos locales de un modelo.
+- `/stats`: muestra dos tablas separadas (`normal` y `benchmark`).
+- `/clear_stats`: limpia métricas.
+- `/clear_stats <n>`: limpia todas las métricas del modelo `<n>`.
+- `/clear_stats <n> <device>`: limpia solo ese modelo/device.
+- `/current_model`: muestra modelo cargado y runtime activo.
+- `/benchmark`: pregunta si correr todos los modelos o solo faltantes; siempre en `CPU/GPU/NPU`.
+- `/benchmark <n>`: benchmark del modelo `<n>` en `CPU/GPU/NPU`.
+- `/start_server`: inicia API compatible OpenAI en `http://0.0.0.0:1311/v1/chat/completions`.
+- `/exit`: salir.
 
-## Notes
-- Models are stored in `ov_models/` and are **not** versioned in Git.
-- For private Hugging Face repos, set `HF_TOKEN` or use `ov_models/hf_auth.json`.
+## Catálogo de modelos (`models.json`)
+Cada entrada:
+
+```json
+{
+  "display": "Nombre visible",
+  "params": "7B",
+  "repo": "owner/repo",
+  "local_dir": "folder-name"
+}
+```
+
+Podés editar este archivo manualmente o usar `/add_model`.
+
+## Sitio web (GitHub Pages)
+El proyecto incluye un sitio en `docs/`:
+- `docs/index.html`
+- `docs/styles.css`
+- `docs/app.js`
+- `docs/benchmarks.json`
+- `docs/benchmarks-data.js`
+
+Funcionalidad del sitio:
+- Presentación del proyecto.
+- Tabla de resultados actuales en modos `Benchmark` y `Normal`.
+- Selección de modelo y device.
+- Resaltado de filas por modelo seleccionado.
+- Filtro por cada columna.
+- Ordenamiento por columna (click en encabezados).
+
+### Publicar en GitHub Pages
+1. Ir a `Settings` → `Pages`.
+2. Source: `Deploy from a branch`.
+3. Branch: `main` (o la que uses), folder: `/docs`.
+4. Guardar.
+
+## Tests
+Ejecutar:
+
+```powershell
+python -m pytest -q tests
+```
+
+Actualmente la suite pasa en local con cobertura de flujos críticos (stats por modo, benchmark, compatibilidad device, slash commands y modelos JSON).
+
+## Notas
+- `ov_models/` contiene datos de runtime y puede crecer mucho.
+- Para repos privados de Hugging Face, usar `HF_TOKEN` o `ov_models/hf_auth.json`.

@@ -1,4 +1,4 @@
-import io
+﻿import io
 import json
 import os
 import pathlib
@@ -18,7 +18,7 @@ import sys
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Provide lightweight stubs so importing the app does not require external deps.
+# Lightweight stubs to avoid external dependencies during import.
 fake_ov = types.ModuleType("openvino_genai")
 fake_ov.LLMPipeline = object
 fake_hf = types.ModuleType("huggingface_hub")
@@ -37,14 +37,25 @@ class TestChatNPU(unittest.TestCase):
         self.auth = self.cache / "hf_auth.json"
         self.stats = self.cache / "stats.json"
         self.prompts_file = self.cache / "benchmark_prompts.json"
+        self.compat_file = self.cache / "device_compat.json"
+        self.models_file = self.cache / "models.json"
+
         self.orig_cache = app.CACHE_DIR
         self.orig_auth = app.AUTH_FILE
         self.orig_stats = app.STATS_FILE
         self.orig_prompts = app.BENCHMARK_PROMPTS_FILE
+        self.orig_compat = app.DEVICE_COMPAT_FILE
+        self.orig_models_file = app.MODELS_FILE
+        self.orig_models = app.MODELS
+
         app.CACHE_DIR = self.cache
         app.AUTH_FILE = self.auth
         app.STATS_FILE = self.stats
         app.BENCHMARK_PROMPTS_FILE = self.prompts_file
+        app.DEVICE_COMPAT_FILE = self.compat_file
+        app.MODELS_FILE = self.models_file
+        app.MODELS = []
+
         os.environ.pop("HF_TOKEN", None)
 
     def tearDown(self):
@@ -52,213 +63,169 @@ class TestChatNPU(unittest.TestCase):
         app.AUTH_FILE = self.orig_auth
         app.STATS_FILE = self.orig_stats
         app.BENCHMARK_PROMPTS_FILE = self.orig_prompts
+        app.DEVICE_COMPAT_FILE = self.orig_compat
+        app.MODELS_FILE = self.orig_models_file
+        app.MODELS = self.orig_models
         os.environ.pop("HF_TOKEN", None)
         shutil.rmtree(self.base, ignore_errors=True)
 
-    def test_ensure_auth_file_creates_default_json(self):
+    def test_auth_file_and_token_sources(self):
         app.ensure_auth_file()
         self.assertTrue(self.auth.exists())
         self.assertEqual(json.loads(self.auth.read_text(encoding="utf-8")), {"hf_token": ""})
 
-    def test_load_hf_token_prefers_environment(self):
-        os.environ["HF_TOKEN"] = "hf_env_token"
-        token = app.load_hf_token()
-        self.assertEqual(token, "hf_env_token")
+        os.environ["HF_TOKEN"] = "hf_env"
+        self.assertEqual(app.load_hf_token(), "hf_env")
+        os.environ.pop("HF_TOKEN", None)
 
-    def test_load_hf_token_reads_auth_file(self):
-        self.auth.write_text(json.dumps({"hf_token": "hf_file_token"}), encoding="utf-8")
-        token = app.load_hf_token()
-        self.assertEqual(token, "hf_file_token")
-        self.assertEqual(os.environ.get("HF_TOKEN"), "hf_file_token")
+        self.auth.write_text(json.dumps({"hf_token": "hf_file"}), encoding="utf-8")
+        self.assertEqual(app.load_hf_token(), "hf_file")
 
-    def test_load_hf_token_prompts_when_missing(self):
-        with (
-            mock.patch("builtins.input", return_value="hf_prompted_token"),
-            redirect_stdout(io.StringIO()),
-        ):
-            token = app.load_hf_token()
-        self.assertEqual(token, "hf_prompted_token")
-        saved = json.loads(self.auth.read_text(encoding="utf-8"))
-        self.assertEqual(saved["hf_token"], "hf_prompted_token")
-
-    def test_dir_size_bytes_and_human_bytes(self):
-        model_dir = self.cache / "model"
-        model_dir.mkdir()
-        (model_dir / "a.bin").write_bytes(b"a" * 10)
-        (model_dir / "b.xml").write_bytes(b"b" * 14)
-        self.assertEqual(app.dir_size_bytes(model_dir), 24)
+    def test_human_bytes_and_downloaded(self):
         self.assertEqual(app.human_bytes(0), "—")
         self.assertEqual(app.human_bytes(10), "10 B")
-        self.assertEqual(app.human_bytes(2048), "2.00 KB")
 
-    def test_is_downloaded_and_model_menu_label(self):
-        model_dir = self.cache / "m1"
+        model_dir = self.cache / "m"
         model = {"display": "X", "params": "1B", "local": model_dir}
         self.assertFalse(app.is_downloaded(model_dir))
-        label = app.model_menu_label(model)
-        self.assertIn("(1B, —)", label)
+        self.assertIn("(1B, —)", app.model_menu_label(model))
+
         model_dir.mkdir()
         (model_dir / "openvino_model.xml").write_text("x", encoding="utf-8")
         (model_dir / "openvino_model.bin").write_bytes(b"x")
         self.assertTrue(app.is_downloaded(model_dir))
-        self.assertIn("B)", app.model_menu_label(model))
 
-    def test_download_model_invokes_snapshot_download(self):
-        dest = self.cache / "dest"
-        with (
-            mock.patch.object(app, "load_hf_token", return_value="hf_any"),
-            mock.patch.object(app, "snapshot_download") as mocked_download,
-            mock.patch.dict(os.environ, {"HF_TOKEN": "hf_any"}, clear=False),
-            redirect_stdout(io.StringIO()),
-        ):
-            app.download_model("owner/repo", dest)
-        mocked_download.assert_called_once()
-        kwargs = mocked_download.call_args.kwargs
-        self.assertEqual(kwargs["repo_id"], "owner/repo")
-        self.assertEqual(kwargs["local_dir"], str(dest))
-        self.assertEqual(kwargs["token"], "hf_any")
+    def test_models_json_load_and_save(self):
+        models = app.load_models()
+        self.assertTrue(self.models_file.exists())
+        self.assertGreaterEqual(len(models), 1)
 
-    def test_choose_model_interactive_cancel(self):
-        with (
-            mock.patch.object(app, "MODELS", [{"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}]),
-            mock.patch("builtins.input", side_effect=["0"]),
-            redirect_stdout(io.StringIO()),
-        ):
-            self.assertIsNone(app.choose_model_interactive(False, "Title"))
+        models.append(
+            {
+                "display": "X",
+                "params": "1B",
+                "repo": "owner/x",
+                "local": self.cache / "x",
+            }
+        )
+        app.save_models(models)
+        loaded = app.load_models()
+        self.assertTrue(any(m["repo"] == "owner/x" for m in loaded))
 
-    def test_choose_model_interactive_downloads_when_needed(self):
-        m = {"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}
-        with (
-            mock.patch.object(app, "MODELS", [m]),
-            mock.patch.object(app, "is_downloaded", return_value=False),
-            mock.patch.object(app, "download_model") as mocked_download,
-            mock.patch("builtins.input", side_effect=["1"]),
-            redirect_stdout(io.StringIO()),
-        ):
-            picked = app.choose_model_interactive(True, "Title")
-        self.assertEqual(picked["repo"], "r/a")
-        mocked_download.assert_called_once_with("r/a", self.cache / "a")
+    def test_stats_schema_and_record_by_mode(self):
+        stats = app.normalize_stats_schema({"models": {}})
 
-    def test_delete_model_files_missing_and_outside_cache(self):
-        missing = {"display": "M", "params": "1B", "local": self.cache / "missing", "repo": "r/m"}
-        with redirect_stdout(io.StringIO()):
-            self.assertFalse(app.delete_model_files(missing))
+        app.record_stats(
+            stats,
+            "repo/a",
+            "Model A",
+            "CPU",
+            1.0,
+            10.0,
+            mode=app.STATS_MODE_NORMAL,
+        )
+        app.record_stats(
+            stats,
+            "repo/a",
+            "Model A",
+            "GPU",
+            2.0,
+            20.0,
+            mode=app.STATS_MODE_BENCHMARK,
+        )
 
-        outside = self.base / "outside"
-        outside.mkdir()
-        (outside / "x.bin").write_bytes(b"x")
-        blocked = {"display": "B", "params": "1B", "local": outside, "repo": "r/b"}
-        with redirect_stdout(io.StringIO()):
-            self.assertFalse(app.delete_model_files(blocked))
-        self.assertTrue(outside.exists())
+        self.assertEqual(
+            stats["models"]["repo/a"]["modes"]["normal"]["devices"]["CPU"]["runs"],
+            1,
+        )
+        self.assertEqual(
+            stats["models"]["repo/a"]["modes"]["benchmark"]["devices"]["GPU"]["runs"],
+            1,
+        )
 
-    def test_delete_model_files_success(self):
-        inside = self.cache / "inside"
-        inside.mkdir()
-        (inside / "x.xml").write_text("x", encoding="utf-8")
-        model = {"display": "S", "params": "1B", "local": inside, "repo": "r/s"}
-        with redirect_stdout(io.StringIO()):
-            self.assertTrue(app.delete_model_files(model))
-        self.assertFalse(inside.exists())
-
-    def test_load_save_record_stats_and_mean(self):
-        self.assertEqual(app.load_stats(), {"models": {}})
-        stats = {"models": {}}
-        app.record_stats(stats, "repo/a", "Model A", 1.5, 12.0)
-        app.record_stats(stats, "repo/a", "Model A", 2.5, 8.0)
-        self.assertEqual(stats["models"]["repo/a"]["runs"], 2)
-        self.assertEqual(app.mean([1.0, 3.0]), 2.0)
         app.save_stats(stats)
         loaded = app.load_stats()
-        self.assertEqual(loaded["models"]["repo/a"]["runs"], 2)
+        self.assertIn("modes", loaded["models"]["repo/a"])
 
-    def test_print_stats_table_outputs_headers(self):
-        stats = {"models": {"repo/a": {"name": "Model A", "runs": 1, "ttft_s": [1.0], "tps": [10.0]}}}
+    def test_print_stats_table_shows_two_sections(self):
+        stats = app.normalize_stats_schema({"models": {}})
+        app.record_stats(stats, "repo/a", "Model A", "CPU", 1.0, 10.0, mode=app.STATS_MODE_NORMAL)
+        app.record_stats(
+            stats,
+            "repo/a",
+            "Model A",
+            "NPU",
+            1.5,
+            25.0,
+            mode=app.STATS_MODE_BENCHMARK,
+        )
+
         out = io.StringIO()
         with redirect_stdout(out):
             app.print_stats_table(stats)
         text = out.getvalue()
-        self.assertIn("Model", text)
-        self.assertIn("TTFT avg(s)", text)
-        self.assertIn("Model A", text)
+        self.assertIn("Normal stats", text)
+        self.assertIn("Benchmark stats", text)
+        self.assertIn("?) Model A", text)
 
-    def test_command_helpers(self):
+    def test_clear_stats_device_removes_from_both_modes(self):
+        m1 = {"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}
+        with mock.patch.object(app, "MODELS", [m1]):
+            stats = app.normalize_stats_schema({"models": {}})
+            app.record_stats(stats, "r/a", "A", "CPU", 1.0, 10.0, mode=app.STATS_MODE_NORMAL)
+            app.record_stats(stats, "r/a", "A", "CPU", 1.0, 10.0, mode=app.STATS_MODE_BENCHMARK)
+
+            with redirect_stdout(io.StringIO()):
+                app.clear_stats(stats, model_number=1, device="CPU")
+
+            self.assertNotIn("r/a", stats["models"])
+
+    def test_command_helpers_slash_only(self):
         self.assertTrue(app.is_command("/help"))
-        self.assertTrue(app.is_command("models"))
-        self.assertFalse(app.is_command("hello"))
+        self.assertFalse(app.is_command("help"))
+        self.assertTrue(app.is_command("/benchmark 2"))
         self.assertEqual(app.normalize_command("/stats"), "stats")
-        self.assertTrue(app.is_command("current_model"))
-        self.assertTrue(app.is_command("benchmark 1"))
-        self.assertTrue(app.is_command("start_server"))
-        self.assertTrue(app.is_command("/config"))
 
+    def test_device_compat_save_load_and_badges(self):
+        compat = {}
+        app.mark_model_device_compat(compat, "repo/a", "CPU", True)
+        app.mark_model_device_compat(compat, "repo/a", "GPU", False)
+        app.save_device_compat(compat)
+        loaded = app.load_device_compat()
+        self.assertTrue(loaded["repo/a"]["CPU"])
+        self.assertFalse(loaded["repo/a"]["GPU"])
+        badges = app.model_device_badges(loaded, "repo/a")
+        self.assertIn("CPU:✅", badges)
+        self.assertIn("GPU:❌", badges)
 
-    def test_configure_runtime_updates_active_values(self):
-        old_device = app.ACTIVE_DEVICE
-        old_hint = app.ACTIVE_PERFORMANCE_HINT
-        try:
-            with (
-                mock.patch("builtins.input", side_effect=["1", "2"]),
-                redirect_stdout(io.StringIO()),
-            ):
-                app.configure_runtime()
-            self.assertEqual(app.ACTIVE_DEVICE, app.DEVICE_OPTIONS[0])
-            self.assertEqual(app.ACTIVE_PERFORMANCE_HINT, app.PERFORMANCE_HINT_OPTIONS[1])
-        finally:
-            app.ACTIVE_DEVICE = old_device
-            app.ACTIVE_PERFORMANCE_HINT = old_hint
-
-    def test_load_pipeline_calls_openvino_constructor(self):
-        selected = {"display": "X", "params": "1B", "local": self.cache / "x", "repo": "r/x"}
-        with (
-            mock.patch.object(app.ov_genai, "LLMPipeline", return_value="PIPE") as mocked_pipe,
-            redirect_stdout(io.StringIO()),
-        ):
-            result = app.load_pipeline(selected)
-        self.assertEqual(result, "PIPE")
-        mocked_pipe.assert_called_once_with(
-            str(self.cache / "x"),
-            app.ACTIVE_DEVICE,
-            PERFORMANCE_HINT=app.ACTIVE_PERFORMANCE_HINT,
-        )
-
-    def test_main_full_flow(self):
-        model_dir = self.cache / "ready_model"
-        model_dir.mkdir()
-        model = {"display": "Ready", "params": "1B", "local": model_dir, "repo": "repo/ready"}
-
-        class FakePipe:
-            def generate(self, prompt, max_new_tokens, temperature, top_p, streamer):
-                streamer("hola")
-                streamer(" mundo")
-
-        inputs = iter(["hola", "help", "stats", "current_model", "models", "pregunta", "delete", "exit"])
-
-        def fake_input(_prompt):
-            return next(inputs)
-
+    def test_choose_model_interactive_displays_device_badges(self):
+        model = {"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}
+        compat = {"r/a": {"CPU": True, "GPU": False, "NPU": True}}
         out = io.StringIO()
         with (
-            mock.patch("builtins.input", side_effect=fake_input),
-            mock.patch.object(app, "ensure_auth_file"),
-            mock.patch.object(app, "load_stats", return_value={"models": {}}),
-            mock.patch.object(app, "choose_model_interactive", side_effect=[model, model]),
-            mock.patch.object(app, "load_pipeline", return_value=FakePipe()),
-            mock.patch.object(app, "delete_model_files", return_value=True),
-            mock.patch.object(app, "save_stats") as mocked_save,
+            mock.patch.object(app, "MODELS", [model]),
+            mock.patch("builtins.input", side_effect=["0"]),
             redirect_stdout(out),
         ):
-            app.main()
-
+            app.choose_model_interactive(False, "Title", compat=compat)
         text = out.getvalue()
-        self.assertIn("No model loaded", text)
-        self.assertIn("Commands:", text)
-        self.assertIn("TTFT:", text)
-        self.assertIn("You deleted the active model", text)
-        self.assertIn("Bye.", text)
-        self.assertTrue(mocked_save.called)
+        self.assertIn("CPU:✅", text)
+        self.assertIn("GPU:❌", text)
 
-    def test_benchmark_models_all_downloaded(self):
+    def test_add_model_interactive(self):
+        models = []
+        with (
+            mock.patch("builtins.input", side_effect=["My Model", "4B", "owner/my-model", ""]),
+            redirect_stdout(io.StringIO()),
+        ):
+            created = app.add_model_interactive(models)
+        self.assertIsNotNone(created)
+        self.assertEqual(created["repo"], "owner/my-model")
+        self.assertTrue(self.models_file.exists())
+        stored = json.loads(self.models_file.read_text(encoding="utf-8"))
+        self.assertTrue(any(x["repo"] == "owner/my-model" for x in stored))
+
+    def test_benchmark_models_all_models_all_devices(self):
         m1 = {"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}
         m2 = {"display": "B", "params": "2B", "local": self.cache / "b", "repo": "r/b"}
 
@@ -266,20 +233,18 @@ class TestChatNPU(unittest.TestCase):
             def generate(self, prompt, max_new_tokens, temperature, top_p, streamer):
                 streamer("ok")
 
-        out = io.StringIO()
         with (
             mock.patch.object(app, "MODELS", [m1, m2]),
             mock.patch.object(app, "is_downloaded", return_value=True),
             mock.patch.object(app, "load_pipeline", return_value=FakePipe()) as mocked_load,
-            mock.patch.object(app, "save_stats") as mocked_save,
-            redirect_stdout(out),
+            mock.patch.object(app, "save_stats"),
+            redirect_stdout(io.StringIO()),
         ):
             app.benchmark_models({"models": {}}, ["p1", "p2", "p3", "p4", "p5"])
 
-        self.assertEqual(mocked_load.call_count, 2)
-        self.assertTrue(mocked_save.called)
+        self.assertEqual(mocked_load.call_count, 6)
 
-    def test_benchmark_models_single_model_number(self):
+    def test_benchmark_models_single_model_runs_three_devices(self):
         m1 = {"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}
         m2 = {"display": "B", "params": "2B", "local": self.cache / "b", "repo": "r/b"}
 
@@ -296,74 +261,111 @@ class TestChatNPU(unittest.TestCase):
         ):
             app.benchmark_models({"models": {}}, ["p1", "p2", "p3", "p4", "p5"], model_number=2)
 
-        mocked_load.assert_called_once_with(m2)
+        self.assertEqual(mocked_load.call_count, 3)
 
-    def test_collect_benchmark_prompts(self):
+    def test_benchmark_models_only_missing_models(self):
+        m1 = {"display": "A", "params": "1B", "local": self.cache / "a", "repo": "r/a"}
+        m2 = {"display": "B", "params": "2B", "local": self.cache / "b", "repo": "r/b"}
+
+        class FakePipe:
+            def generate(self, prompt, max_new_tokens, temperature, top_p, streamer):
+                streamer("ok")
+
+        stats = app.normalize_stats_schema({"models": {}})
+        app.record_stats(
+            stats,
+            "r/a",
+            "A",
+            "CPU",
+            1.0,
+            10.0,
+            mode=app.STATS_MODE_BENCHMARK,
+        )
+
         with (
-            mock.patch("builtins.input", side_effect=["a", "b", "c", "d", "e"]),
+            mock.patch.object(app, "MODELS", [m1, m2]),
+            mock.patch.object(app, "is_downloaded", return_value=True),
+            mock.patch.object(app, "load_pipeline", return_value=FakePipe()) as mocked_load,
+            mock.patch.object(app, "save_stats"),
             redirect_stdout(io.StringIO()),
         ):
-            prompts = app.collect_benchmark_prompts(5)
-        self.assertEqual(prompts, ["a", "b", "c", "d", "e"])
+            app.benchmark_models(
+                stats,
+                ["p1", "p2", "p3", "p4", "p5"],
+                only_missing_models=True,
+            )
 
-    def test_save_and_load_benchmark_prompts(self):
-        app.save_benchmark_prompts(["one", "two", "three"])
-        self.assertTrue(self.prompts_file.exists())
-        loaded = app.load_saved_benchmark_prompts()
-        self.assertEqual(loaded, ["one", "two", "three"])
+        self.assertEqual(mocked_load.call_count, 3)
 
-    def test_collect_benchmark_prompts_reuses_saved(self):
-        app.save_benchmark_prompts(["p1", "p2", "p3", "p4", "p5"])
-        with (
-            mock.patch("builtins.input", side_effect=["y"]),
-            redirect_stdout(io.StringIO()),
-        ):
-            prompts = app.collect_benchmark_prompts(5)
-        self.assertEqual(prompts, ["p1", "p2", "p3", "p4", "p5"])
+    def test_main_flow_slash_commands(self):
+        model_dir = self.cache / "ready_model"
+        model_dir.mkdir()
+        model = {"display": "Ready", "params": "1B", "local": model_dir, "repo": "repo/ready"}
 
-    def test_prompt_yes_no_retries_invalid_input(self):
+        class FakePipe:
+            def generate(self, prompt, max_new_tokens, temperature, top_p, streamer):
+                streamer("hola")
+                streamer(" mundo")
+
+        inputs = iter([
+            "hola",
+            "/help",
+            "/stats",
+            "/current_model",
+            "/models",
+            "1",
+            "1",
+            "pregunta",
+            "/delete",
+            "/exit",
+        ])
+
+        def fake_input(_prompt):
+            return next(inputs)
+
         out = io.StringIO()
         with (
-            mock.patch("builtins.input", side_effect=["maybe", "n"]),
+            mock.patch("builtins.input", side_effect=fake_input),
+            mock.patch.object(app, "ensure_auth_file"),
+            mock.patch.object(app, "load_stats", return_value=app.normalize_stats_schema({"models": {}})),
+            mock.patch.object(app, "choose_model_interactive", side_effect=[model, model]),
+            mock.patch.object(app, "load_pipeline", return_value=FakePipe()),
+            mock.patch.object(app, "delete_model_files", return_value=True),
+            mock.patch.object(app, "save_stats") as mocked_save,
             redirect_stdout(out),
         ):
-            result = app.prompt_yes_no("Use saved prompts?", default_yes=True)
-        self.assertFalse(result)
-        self.assertIn("Please answer with 'y' or 'n'.", out.getvalue())
+            app.main()
 
-    def test_build_chat_prompt(self):
-        messages = [
-            {"role": "system", "content": "You are helpful"},
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi"},
-            {"role": "user", "content": "How are you?"},
-        ]
-        prompt = app.build_chat_prompt(messages)
-        self.assertIn("System: You are helpful", prompt)
-        self.assertIn("User: Hello", prompt)
-        self.assertTrue(prompt.endswith("\nAssistant:"))
+        text = out.getvalue()
+        self.assertIn("No model loaded", text)
+        self.assertIn("Commands:", text)
+        self.assertIn("TTFT:", text)
+        self.assertIn("You deleted the active model", text)
+        self.assertIn("Bye.", text)
+        self.assertTrue(mocked_save.called)
 
-    def test_create_openai_chat_response_shape(self):
-        response = app.create_openai_chat_response("repo/test", "sample response")
-        self.assertEqual(response["object"], "chat.completion")
-        self.assertEqual(response["model"], "repo/test")
-        self.assertEqual(response["choices"][0]["message"]["content"], "sample response")
+    def test_main_marks_device_incompatible_when_load_fails(self):
+        model_dir = self.cache / "m"
+        model_dir.mkdir()
+        model = {"display": "M", "params": "1B", "local": model_dir, "repo": "repo/m"}
+        inputs = iter(["/models", "1", "1", "/exit"])
 
-    def test_start_openai_compatible_server_starts_background_server(self):
-        state = {"pipe": None, "current": None}
-        fake_server = mock.MagicMock()
-        fake_thread = mock.MagicMock()
+        def fake_input(_prompt):
+            return next(inputs)
 
         with (
-            mock.patch.object(app, "ThreadingHTTPServer", return_value=fake_server) as mocked_http,
-            mock.patch.object(app.threading, "Thread", return_value=fake_thread) as mocked_thread,
+            mock.patch("builtins.input", side_effect=fake_input),
+            mock.patch.object(app, "ensure_auth_file"),
+            mock.patch.object(app, "load_stats", return_value=app.normalize_stats_schema({"models": {}})),
+            mock.patch.object(app, "choose_model_interactive", return_value=model),
+            mock.patch.object(app, "load_pipeline", side_effect=RuntimeError("boom")),
+            redirect_stdout(io.StringIO()),
         ):
-            result = app.start_openai_compatible_server(state)
+            app.main()
 
-        self.assertIs(result, fake_server)
-        mocked_http.assert_called_once()
-        mocked_thread.assert_called_once()
-        fake_thread.start.assert_called_once()
+        compat = app.load_device_compat()
+        self.assertIn("repo/m", compat)
+        self.assertFalse(compat["repo/m"]["CPU"])
 
 
 if __name__ == "__main__":

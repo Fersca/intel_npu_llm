@@ -1,0 +1,298 @@
+{
+  "generated_at_utc": "2026-03-03T02:02:14.333637+00:00",
+  "source": "ov_models\\stats.json",
+  "normal": [
+    {
+      "repo": "OpenVINO/TinyLlama-1.1B-Chat-v1.0-int4-ov",
+      "model": "TinyLlama 1.1B Chat INT4 (1.1B, 609.92 MB)",
+      "device": "CPU",
+      "runs": 2,
+      "ttft_avg": 0.564321399999244,
+      "tps_avg": 72.83875157954255,
+      "ttft_last": 0.10835149999911664,
+      "tps_last": 72.13891579440087
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov",
+      "model": "Qwen2.5 1.5B instruct INT4 (1.5B, 892.64 MB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.22171827999991364,
+      "tps_avg": 47.82303413181914,
+      "ttft_last": 0.09856009999975868,
+      "tps_last": 46.48408203452452
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov",
+      "model": "Qwen2.5 1.5B instruct INT4 (1.5B, 892.64 MB)",
+      "device": "CPU",
+      "runs": 5,
+      "ttft_avg": 0.41124022000003607,
+      "tps_avg": 47.448896964377965,
+      "ttft_last": 0.17073040000013862,
+      "tps_last": 45.33020605074771
+    },
+    {
+      "repo": "FluidInference/phi-4-mini-instruct-int4-ov-npu",
+      "model": "Phi-4 mini instruct INT4 (\u22483.8B, 2.11 GB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.21990370000003168,
+      "tps_avg": 28.70542837077685,
+      "ttft_last": 0.1550886999998511,
+      "tps_last": 28.690222486935724
+    },
+    {
+      "repo": "FluidInference/phi-4-mini-instruct-int4-ov-npu",
+      "model": "Phi-4 mini instruct INT4 (\u22483.8B, 2.11 GB)",
+      "device": "CPU",
+      "runs": 7,
+      "ttft_avg": 1.0284438571427796,
+      "tps_avg": 24.80827619871343,
+      "ttft_last": 0.43823019999945245,
+      "tps_last": 23.66529430494142
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov",
+      "model": "Qwen2.5 1.5B instruct INT4 (1.5B, 892.64 MB)",
+      "device": "NPU",
+      "runs": 5,
+      "ttft_avg": 2.234801460000108,
+      "tps_avg": 15.718516620564921,
+      "ttft_last": 2.2185229000001527,
+      "tps_last": 15.225202648032635
+    },
+    {
+      "repo": "FluidInference/phi-4-mini-instruct-int4-ov-npu",
+      "model": "Phi-4 mini instruct INT4 (\u22483.8B, 2.11 GB)",
+      "device": "NPU",
+      "runs": 5,
+      "ttft_avg": 2.468965500000104,
+      "tps_avg": 14.374379210194903,
+      "ttft_last": 2.4421222000000853,
+      "tps_last": 14.412994943220312
+    },
+    {
+      "repo": "OpenVINO/Phi-3-medium-4k-instruct-int4-ov",
+      "model": "Phi-3 Medium 4k Instruct INT4 (3.8B, 6.91 GB)",
+      "device": "GPU",
+      "runs": 1,
+      "ttft_avg": 0.7139980000001742,
+      "tps_avg": 10.772673707025266,
+      "ttft_last": 0.7139980000001742,
+      "tps_last": 10.772673707025266
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-14B-Instruct-int4-ov",
+      "model": "Qwen2.5 14B Instruct INT4 OV (14B, 7.82 GB)",
+      "device": "GPU",
+      "runs": 1,
+      "ttft_avg": 0.9187426999997115,
+      "tps_avg": 9.579396633715158,
+      "ttft_last": 0.9187426999997115,
+      "tps_last": 9.579396633715158
+    }
+  ],
+  "benchmark": [
+    {
+      "repo": "OpenVINO/TinyLlama-1.1B-Chat-v1.0-int4-ov",
+      "model": "TinyLlama 1.1B Chat INT4 (1.1B, 609.92 MB)",
+      "device": "CPU",
+      "runs": 5,
+      "ttft_avg": 0.29731988000021375,
+      "tps_avg": 65.07902144421864,
+      "ttft_last": 0.1140255000000252,
+      "tps_last": 66.75178755726157
+    },
+    {
+      "repo": "OpenVINO/TinyLlama-1.1B-Chat-v1.0-int4-ov",
+      "model": "TinyLlama 1.1B Chat INT4 (1.1B, 609.92 MB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.19574912000007316,
+      "tps_avg": 57.07969583976031,
+      "ttft_last": 0.06388049999986833,
+      "tps_last": 61.63616275855615
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov",
+      "model": "Qwen2.5 1.5B instruct INT4 (1.5B, 892.64 MB)",
+      "device": "CPU",
+      "runs": 5,
+      "ttft_avg": 0.38010183999995206,
+      "tps_avg": 48.04757788115613,
+      "ttft_last": 0.162381699999969,
+      "tps_last": 44.909542454126736
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov",
+      "model": "Qwen2.5 1.5B instruct INT4 (1.5B, 892.64 MB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.24400308000003862,
+      "tps_avg": 46.74945014763621,
+      "ttft_last": 0.11193600000024162,
+      "tps_last": 46.095669050548835
+    },
+    {
+      "repo": "OpenVINO/TinyLlama-1.1B-Chat-v1.0-int4-ov",
+      "model": "TinyLlama 1.1B Chat INT4 (1.1B, 609.92 MB)",
+      "device": "NPU",
+      "runs": 5,
+      "ttft_avg": 1.395426260000022,
+      "tps_avg": 29.417296191460615,
+      "ttft_last": 1.3627682999995159,
+      "tps_last": 31.839523142994885
+    },
+    {
+      "repo": "FluidInference/phi-4-mini-instruct-int4-ov-npu",
+      "model": "Phi-4 mini instruct INT4 (\u22483.8B, 2.11 GB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.2209056599998803,
+      "tps_avg": 28.35354749100829,
+      "ttft_last": 0.1396275000006426,
+      "tps_last": 28.6698158522255
+    },
+    {
+      "repo": "FluidInference/phi-4-mini-instruct-int4-ov-npu",
+      "model": "Phi-4 mini instruct INT4 (\u22483.8B, 2.11 GB)",
+      "device": "CPU",
+      "runs": 5,
+      "ttft_avg": 0.7046610199999123,
+      "tps_avg": 24.44473489133039,
+      "ttft_last": 0.20930090000001655,
+      "tps_last": 24.716247040491808
+    },
+    {
+      "repo": "llmware/llama-3.1-8b-instruct-npu-ov",
+      "model": "Llama 3.1 8B Instruct INT4 NPU OV (8B, 4.26 GB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.31403839999984484,
+      "tps_avg": 16.966305127474236,
+      "ttft_last": 0.21522490000006655,
+      "tps_last": 17.184164327962705
+    },
+    {
+      "repo": "FluidInference/qwen2.5-7b-int4-npu-ov",
+      "model": "Qwen2.5 7B INT4 NPU OV (7B, 4.08 GB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.3275891000001138,
+      "tps_avg": 15.758205668751254,
+      "ttft_last": 0.2143370000003415,
+      "tps_last": 15.021006905271047
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-1.5B-Instruct-int4-ov",
+      "model": "Qwen2.5 1.5B instruct INT4 (1.5B, 892.64 MB)",
+      "device": "NPU",
+      "runs": 5,
+      "ttft_avg": 2.2362714200000484,
+      "tps_avg": 15.702779032598466,
+      "ttft_last": 2.2148043999995934,
+      "tps_last": 15.242716606433275
+    },
+    {
+      "repo": "FluidInference/phi-4-mini-instruct-int4-ov-npu",
+      "model": "Phi-4 mini instruct INT4 (\u22483.8B, 2.11 GB)",
+      "device": "NPU",
+      "runs": 5,
+      "ttft_avg": 2.4712854200002767,
+      "tps_avg": 14.411157936682883,
+      "ttft_last": 2.4449713000003612,
+      "tps_last": 14.438573963082547
+    },
+    {
+      "repo": "FluidInference/qwen2.5-7b-int4-npu-ov",
+      "model": "Qwen2.5 7B INT4 NPU OV (7B, 4.08 GB)",
+      "device": "CPU",
+      "runs": 5,
+      "ttft_avg": 1.7236137600000803,
+      "tps_avg": 13.769425735583871,
+      "ttft_last": 0.6658868000004077,
+      "tps_last": 13.422069860401491
+    },
+    {
+      "repo": "llmware/llama-3.1-8b-instruct-npu-ov",
+      "model": "Llama 3.1 8B Instruct INT4 NPU OV (8B, 4.26 GB)",
+      "device": "CPU",
+      "runs": 5,
+      "ttft_avg": 2.0224459399998524,
+      "tps_avg": 13.57274195506156,
+      "ttft_last": 1.0768067999997584,
+      "tps_last": 13.860720933797197
+    },
+    {
+      "repo": "OpenVINO/Phi-3-medium-4k-instruct-int4-ov",
+      "model": "Phi-3 Medium 4k Instruct INT4 (3.8B, 6.91 GB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.41925524000016595,
+      "tps_avg": 9.910038499755931,
+      "ttft_last": 0.34219000000030064,
+      "tps_last": 9.901643870371705
+    },
+    {
+      "repo": "FluidInference/qwen2.5-7b-int4-npu-ov",
+      "model": "Qwen2.5 7B INT4 NPU OV (7B, 4.08 GB)",
+      "device": "NPU",
+      "runs": 5,
+      "ttft_avg": 4.281393539999954,
+      "tps_avg": 9.054899881988565,
+      "ttft_last": 4.25601000000006,
+      "tps_last": 8.931171647514645
+    },
+    {
+      "repo": "llmware/llama-3.1-8b-instruct-npu-ov",
+      "model": "Llama 3.1 8B Instruct INT4 NPU OV (8B, 4.26 GB)",
+      "device": "NPU",
+      "runs": 5,
+      "ttft_avg": 4.917516219999743,
+      "tps_avg": 8.914218982174518,
+      "ttft_last": 4.884136000000581,
+      "tps_last": 9.104730447180728
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-14B-Instruct-int4-ov",
+      "model": "Qwen2.5 14B Instruct INT4 OV (14B, 7.82 GB)",
+      "device": "GPU",
+      "runs": 5,
+      "ttft_avg": 0.38664236000004165,
+      "tps_avg": 8.561086353341906,
+      "ttft_last": 0.3912548999996943,
+      "tps_last": 8.403752530979194
+    },
+    {
+      "repo": "OpenVINO/Phi-3-medium-4k-instruct-int4-ov",
+      "model": "Phi-3 Medium 4k Instruct INT4 (3.8B, 6.91 GB)",
+      "device": "CPU",
+      "runs": 5,
+      "ttft_avg": 2.48040028000014,
+      "tps_avg": 6.957752779323916,
+      "ttft_last": 0.9747376000004806,
+      "tps_last": 6.521754815243921
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-14B-Instruct-int4-ov",
+      "model": "Qwen2.5 14B Instruct INT4 OV (14B, 7.82 GB)",
+      "device": "CPU",
+      "runs": 5,
+      "ttft_avg": 3.5863222400002996,
+      "tps_avg": 6.600089409835076,
+      "ttft_last": 1.702452200001062,
+      "tps_last": 6.3547419061700525
+    },
+    {
+      "repo": "OpenVINO/Qwen2.5-14B-Instruct-int4-ov",
+      "model": "Qwen2.5 14B Instruct INT4 OV (14B, 7.82 GB)",
+      "device": "NPU",
+      "runs": 5,
+      "ttft_avg": 18.09663057999969,
+      "tps_avg": 3.4780234729501758,
+      "ttft_last": 18.04578930000025,
+      "tps_last": 3.4974715841587614
+    }
+  ]
+}
